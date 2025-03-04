@@ -1,21 +1,23 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 3000;
 
-// CORS configuration
 app.use(cors({
-  origin: true,
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Accept']
 }));
 
-// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({ message: 'Welcome to Pastbox API' });
+});
 
 // In-memory storage
 let stories = [];
@@ -103,7 +105,16 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-}); 
+// Handle 404
+app.use((req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
+module.exports = app;
+
+// Only listen if not running on Vercel
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+} 
