@@ -10,7 +10,7 @@ const app = express();
 
 // 配置 CORS
 app.use(cors({
-  origin: ['https://pastbox.vercel.app', 'http://localhost:5173'],
+  origin: '*',  // 允许所有来源
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -21,6 +21,8 @@ app.use(express.json());
 // 添加请求日志中间件
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log('请求头:', req.headers);
+  console.log('请求体:', req.body);
   next();
 });
 
