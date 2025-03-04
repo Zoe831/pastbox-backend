@@ -2,16 +2,30 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const nodemailer = require('nodemailer');
-const fs = require('fs');
-const path = require('path');
-const multer = require('multer');
 
 // 加载环境变量
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// 配置 CORS
+app.use(cors({
+  origin: ['https://pastbox.vercel.app', 'http://localhost:5173'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 app.use(express.json());
+
+// 添加请求日志中间件
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+// 内存存储
+let stories = [];
 
 // 配置多邮箱服务支持
 function createMailTransporter(email) {
@@ -40,34 +54,11 @@ defaultTransporter.verify(function (error, success) {
   }
 });
 
-// 创建数据存储目录
-const DATA_DIR = path.join(process.cwd(), 'data');
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR);
-}
-
-const STORIES_FILE = path.join(DATA_DIR, 'stories.json');
-if (!fs.existsSync(STORIES_FILE)) {
-  fs.writeFileSync(STORIES_FILE, '[]');
-}
-
-// 读取故事数据
-function readStories() {
-  const data = fs.readFileSync(STORIES_FILE, 'utf8');
-  return JSON.parse(data);
-}
-
-// 保存故事数据
-function saveStories(stories) {
-  fs.writeFileSync(STORIES_FILE, JSON.stringify(stories, null, 2));
-}
-
 // 创建故事路由
 app.post('/api/stories', async (req, res) => {
   try {
     console.log('收到创建故事请求:', req.body);
     
-    const stories = readStories();
     const newStory = {
       id: Date.now().toString(),
       ...req.body,
@@ -76,7 +67,6 @@ app.post('/api/stories', async (req, res) => {
     
     console.log('新故事数据:', newStory);
     stories.push(newStory);
-    saveStories(stories);
 
     // 如果提醒时间在一小时内，立即发送邮件
     const reminderDate = new Date(newStory.reminderDate);
@@ -122,7 +112,6 @@ app.post('/api/stories', async (req, res) => {
 // 获取公开故事路由
 app.get('/api/stories/public', (req, res) => {
   try {
-    const stories = readStories();
     const publicStories = stories
       .filter(story => story.isPublic)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
